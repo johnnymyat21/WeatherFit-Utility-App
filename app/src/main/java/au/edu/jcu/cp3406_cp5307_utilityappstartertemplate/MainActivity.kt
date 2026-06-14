@@ -32,6 +32,7 @@ import au.edu.jcu.cp3406_cp5307_utilityappstartertemplate.ui.theme.CP3406_CP5603
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,10 +55,13 @@ fun UtilityAppPreview() {
 }
 
 @Composable
-fun UtilityApp() {
+fun UtilityApp(
+    weatherViewModel: WeatherViewModel = viewModel()
+) {
     var selectedTab by remember { mutableStateOf("Utility") }
     var useCelsius by remember { mutableStateOf(true) }
     var dailyGoal by remember { mutableIntStateOf(8) }
+    val weatherState = weatherViewModel.uiState
 
     Scaffold(
         bottomBar = {
@@ -81,7 +85,9 @@ fun UtilityApp() {
             when (selectedTab) {
                 "Utility" -> UtilityScreen(
                     useCelsius = useCelsius,
-                    dailyGoal = dailyGoal
+                    dailyGoal = dailyGoal,
+                    weatherState = weatherState,
+                    onRefreshWeather = { weatherViewModel.refreshWeather() }
                 )
 
                 "Settings" -> SettingsScreen(
@@ -103,10 +109,22 @@ fun UtilityApp() {
 @Composable
 fun UtilityScreen(
     useCelsius: Boolean,
-    dailyGoal: Int
+    dailyGoal: Int,
+    weatherState: WeatherUiState,
+    onRefreshWeather: () -> Unit
 ) {
     var waterCount by remember { mutableIntStateOf(0) }
-    val temperatureText = if (useCelsius) "29°C" else "84°F"
+    val temperatureCelsius = weatherState.temperatureCelsius ?: 29.0
+    val displayTemperature = if (useCelsius) {
+        temperatureCelsius
+    } else {
+        temperatureCelsius * 9 / 5 + 32
+    }
+    val temperatureText = if (useCelsius) {
+        "${displayTemperature.toInt()}°C"
+    } else {
+        "${displayTemperature.toInt()}°F"
+    }
     val progress = (waterCount.toFloat() / dailyGoal.toFloat()).coerceIn(0f, 1f)
 
     Column(
@@ -148,9 +166,20 @@ fun UtilityScreen(
                 )
 
                 Text(
-                    text = "Mostly Clear",
+                    text = weatherState.condition,
                     style = MaterialTheme.typography.titleMedium
                 )
+
+                if (weatherState.errorMessage != null) {
+                    Text(
+                        text = weatherState.errorMessage,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                Button(onClick = onRefreshWeather) {
+                    Text("Refresh Weather")
+                }
             }
         }
 
